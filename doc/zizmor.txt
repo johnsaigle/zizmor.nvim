@@ -57,6 +57,7 @@ Default configuration: >lua
       Informational = vim.diagnostic.severity.HINT,
     },
     default_severity = vim.diagnostic.severity.WARN,
+    persona = "auditor",  -- "regular", "pedantic", or "auditor"
     extra_args = {},
     filetypes = { "yaml", "yml" },
   })
@@ -95,11 +96,12 @@ require("zizmor").clear_diagnostics()            *zizmor.clear_diagnostics()*
 When you open a GitHub Actions workflow file:
 
 1. Plugin detects `.github/workflows/*.{yml,yaml}` files
-2. Runs `zizmor --format=json` on the workflow directory
-3. Parses JSON output and filters for current file
-4. Removes duplicates (same rule + location)
-5. Only shows "Primary" locations (not "Related" or "Hidden")
-6. Displays via Neovim's native diagnostic system
+2. Runs `zizmor --format=json --persona auditor -qq <workflow-dir>`
+3. The `-qq` flag suppresses banner and logging (quiet mode)
+4. Parses JSON output and filters for current file
+5. Removes duplicates (same rule + location)
+6. Only shows "Primary" locations (not "Related" or "Hidden")
+7. Displays via Neovim's native diagnostic system
 
 Deduplication:
   Zizmor can report the same finding multiple times. The plugin creates

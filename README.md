@@ -67,6 +67,10 @@ require("zizmor").setup({
   -- Default severity if not specified
   default_severity = vim.diagnostic.severity.WARN,
   
+  -- Persona: "regular", "pedantic", or "auditor"
+  -- auditor = show all findings (recommended)
+  persona = "auditor",
+  
   -- Additional zizmor CLI arguments
   extra_args = {},
   
@@ -99,11 +103,12 @@ end, { desc = "Show zizmor config" })
 
 ## How It Works
 
-1. When you open a workflow file, the plugin runs `zizmor --format=json` on the workflow directory
-2. It parses the JSON output and filters diagnostics for the current file
-3. Duplicates are removed using a combination of rule ID and primary location
-4. Only "Primary" locations are shown (not "Related" or "Hidden" locations)
-5. Diagnostics are displayed using Neovim's native diagnostic system
+1. When you open a workflow file, the plugin runs `zizmor --format=json --persona auditor -qq <workflow-dir>`
+2. The `-qq` flag suppresses the banner and logging output (quiet mode)
+3. It parses the JSON output and filters diagnostics for the current file
+4. Duplicates are removed using a combination of rule ID and primary location
+5. Only "Primary" locations are shown (not "Related" or "Hidden" locations)
+6. Diagnostics are displayed using Neovim's native diagnostic system
 
 ## Deduplication Logic
 
@@ -145,7 +150,8 @@ which zizmor
 1. Make sure you're editing a file in `.github/workflows/`
 2. Check that the file has a `.yml` or `.yaml` extension
 3. Run `:checkhealth` to verify null-ls is loaded
-4. Check if zizmor runs successfully: `zizmor --format=json .github/workflows/`
+4. Check if zizmor runs successfully: `zizmor --format=json -qq .github/workflows/`
+5. Try toggling the plugin: `:ZizmorToggle` twice to reset
 
 ### null-ls not found
 

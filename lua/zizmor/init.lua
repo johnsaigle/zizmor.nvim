@@ -14,6 +14,8 @@ local defaults = {
 	},
 	-- Default severity if not specified
 	default_severity = vim.diagnostic.severity.WARN,
+	-- Persona to use: "regular", "pedantic", or "auditor"
+	persona = "auditor",
 	-- Additional zizmor CLI arguments
 	extra_args = {},
 	-- Filetypes to scan
@@ -145,13 +147,22 @@ function M.zizmor()
 				local workflow_dir = vim.fn.fnamemodify(filepath, ":h")
 				local args = {
 					"--format=json",
-					workflow_dir,
+					"-qq", -- Quiet mode: suppress banner and logging
 				}
+
+				-- Add persona if configured
+				if M.config.persona then
+					table.insert(args, "--persona")
+					table.insert(args, M.config.persona)
+				end
 
 				-- Add extra args from config
 				for _, arg in ipairs(M.config.extra_args) do
-					table.insert(args, 1, arg)
+					table.insert(args, arg)
 				end
+
+				-- Add workflow directory as last argument
+				table.insert(args, workflow_dir)
 
 				-- Create async system command
 				local full_cmd = vim.list_extend({ cmd }, args)
@@ -169,15 +180,26 @@ function M.zizmor()
 						env = vim.env,
 					},
 					function(obj)
-						if obj.code ~= 0 and obj.stderr and obj.stderr ~= "" then
+						-- Zizmor exits with code 0 even when findings exist
+						-- Only treat non-zero exit as error if stdout is empty
+						if obj.code ~= 0 and (not obj.stdout or obj.stdout == "") then
 							vim.schedule(function()
-								vim.notify("Zizmor error: " .. obj.stderr, vim.log.levels.ERROR)
+								local err_msg = obj.stderr and obj.stderr ~= "" and obj.stderr or "Unknown error"
+								vim.notify("Zizmor failed: " .. err_msg, vim.log.levels.ERROR)
 							end)
 							return
 						end
 
+						-- Parse JSON output
 						local ok, parsed = pcall(vim.json.decode, obj.stdout)
 						if not ok or not parsed then
+							-- Silent failure if JSON parsing fails (empty results)
+							vim.schedule(function()
+								if not namespace then
+									namespace = vim.api.nvim_create_namespace("zizmor")
+								end
+								vim.diagnostic.set(namespace, params.bufnr, {})
+							end)
 							return
 						end
 
