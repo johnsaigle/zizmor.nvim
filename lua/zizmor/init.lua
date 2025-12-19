@@ -100,22 +100,25 @@ local function get_best_location_for_diagnostic(result, current_filename)
 	local annotation = primary_loc.symbolic.annotation or ""
 	local feature_kind = primary_loc.symbolic.feature_kind
 
-	-- Check if this is a file-level warning (starts at row 0, spans many lines)
+	-- Check if this is a file-level warning (starts near top of file, spans many lines)
 	-- These are workflow-level issues like missing concurrency settings
-	local is_file_level = concrete.start_point.row == 0 and
+	-- They can start at row 0 or row 1, and span large portions of the file
+	local line_span = concrete.end_point.row - concrete.start_point.row
+	local is_file_level = concrete.start_point.row <= 1 and
 	                      concrete.start_point.column == 0 and
-	                      (concrete.end_point.row - concrete.start_point.row) > 10
+	                      line_span > 20  -- More conservative: 20+ lines = file-level
 
 	if is_file_level then
-		-- For file-level warnings, only highlight the first line (e.g., "name: workflow")
+		-- For file-level warnings, only highlight the first line
 		-- This prevents highlighting the entire file
+		-- Use the actual start row (could be 0 or 1)
 		return {
-			lnum = 0,
+			lnum = concrete.start_point.row,
 			col = 0,
-			end_lnum = 0,
+			end_lnum = concrete.start_point.row,
 			end_col = 100, -- Highlight the whole first line
 			annotation = annotation,
-			feature_kind = "FileLeve", -- Custom kind for file-level
+			feature_kind = "FileLevel", -- Custom kind for file-level
 		}
 	end
 
