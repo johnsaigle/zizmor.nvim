@@ -35,18 +35,6 @@ A Neovim plugin for integrating [zizmor](https://github.com/zizmorcore/zizmor) G
 }
 ```
 
-### Using [packer.nvim](https://github.com/wbthomason/packer.nvim)
-
-```lua
-use {
-  "your-username/zizmor.nvim",
-  requires = { "nvimtools/none-ls.nvim" },
-  config = function()
-    require("zizmor").setup()
-  end,
-}
-```
-
 ## Configuration
 
 Default configuration:
@@ -100,18 +88,6 @@ vim.keymap.set("n", "<leader>zc", function()
   require("zizmor").print_config()
 end, { desc = "Show zizmor config" })
 ```
-
-## How It Works
-
-1. When you open a workflow file, the plugin runs `zizmor --format=json --persona auditor -qq <workflow-dir>`
-2. The `-qq` flag suppresses the banner and logging output (quiet mode)
-3. Parses the JSON output and extracts findings for the current file
-4. For each finding, identifies the "Primary" location (the main issue)
-5. Uses `feature_kind` to determine highlight precision:
-   - `KeyOnly` → Just highlight the problematic word
-   - `Normal` → Highlight the relevant section
-6. Deduplicates by rule ID + location to show each issue once
-7. Displays diagnostics using Neovim's native diagnostic system
 
 ## Smart Highlighting & Deduplication
 
@@ -177,16 +153,6 @@ Install null-ls or none-ls:
 }
 ```
 
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
 ## License
 
 MIT
-
-## Credits
-
-- [zizmor](https://github.com/zizmorcore/zizmor) - The GitHub Actions security scanner
-- [sast-nvim](https://github.com/johnsaigle/sast-nvim) - Library structure inspiration
-- [clippy.nvim](https://github.com/johnsaigle/clippy.nvim) - Deduplication pattern reference
