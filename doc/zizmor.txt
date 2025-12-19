@@ -1,0 +1,110 @@
+*zizmor.txt*  GitHub Actions security diagnostics for Neovim
+
+==============================================================================
+CONTENTS                                                    *zizmor-contents*
+
+1. Introduction .................. |zizmor-introduction|
+2. Requirements .................. |zizmor-requirements|
+3. Installation .................. |zizmor-installation|
+4. Configuration ................. |zizmor-configuration|
+5. Commands ...................... |zizmor-commands|
+6. Functions ..................... |zizmor-functions|
+7. How It Works .................. |zizmor-how-it-works|
+
+==============================================================================
+1. INTRODUCTION                                         *zizmor-introduction*
+
+zizmor.nvim integrates the zizmor GitHub Actions security scanner into
+Neovim, providing real-time security diagnostics for workflow files.
+
+Key features:
+  • Real-time security diagnostics
+  • Native Neovim diagnostic integration
+  • Automatic duplicate detection
+  • Only scans GitHub Actions workflow files
+
+==============================================================================
+2. REQUIREMENTS                                         *zizmor-requirements*
+
+  • Neovim >= 0.8.0
+  • zizmor installed and in PATH
+  • null-ls.nvim or none-ls.nvim
+
+==============================================================================
+3. INSTALLATION                                         *zizmor-installation*
+
+Using lazy.nvim: >lua
+  {
+    "your-username/zizmor.nvim",
+    dependencies = { "nvimtools/none-ls.nvim" },
+    ft = { "yaml" },
+    config = function()
+      require("zizmor").setup()
+    end,
+  }
+<
+
+==============================================================================
+4. CONFIGURATION                                       *zizmor-configuration*
+
+Default configuration: >lua
+  require("zizmor").setup({
+    enabled = true,
+    severity_map = {
+      High = vim.diagnostic.severity.ERROR,
+      Medium = vim.diagnostic.severity.WARN,
+      Low = vim.diagnostic.severity.INFO,
+      Informational = vim.diagnostic.severity.HINT,
+    },
+    default_severity = vim.diagnostic.severity.WARN,
+    extra_args = {},
+    filetypes = { "yaml", "yml" },
+  })
+<
+
+==============================================================================
+5. COMMANDS                                                 *zizmor-commands*
+
+:ZizmorToggle                                               *:ZizmorToggle*
+  Toggle zizmor diagnostics on/off.
+
+:ZizmorConfig                                               *:ZizmorConfig*
+  Print the current configuration.
+
+:ZizmorClear                                                 *:ZizmorClear*
+  Clear all zizmor diagnostics.
+
+==============================================================================
+6. FUNCTIONS                                               *zizmor-functions*
+
+require("zizmor").setup({opts})                             *zizmor.setup()*
+  Initialize the plugin with optional configuration.
+
+require("zizmor").toggle()                                  *zizmor.toggle()*
+  Toggle diagnostics on/off.
+
+require("zizmor").print_config()                      *zizmor.print_config()*
+  Print the current configuration to :messages.
+
+require("zizmor").clear_diagnostics()            *zizmor.clear_diagnostics()*
+  Clear all diagnostics from all buffers.
+
+==============================================================================
+7. HOW IT WORKS                                         *zizmor-how-it-works*
+
+When you open a GitHub Actions workflow file:
+
+1. Plugin detects `.github/workflows/*.{yml,yaml}` files
+2. Runs `zizmor --format=json` on the workflow directory
+3. Parses JSON output and filters for current file
+4. Removes duplicates (same rule + location)
+5. Only shows "Primary" locations (not "Related" or "Hidden")
+6. Displays via Neovim's native diagnostic system
+
+Deduplication:
+  Zizmor can report the same finding multiple times. The plugin creates
+  a unique key using the rule identifier and primary location to prevent
+  duplicate diagnostics from appearing.
+
+==============================================================================
+vim:tw=78:ts=8:ft=help:norl:

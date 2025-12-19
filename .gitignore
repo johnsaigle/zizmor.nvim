@@ -1,0 +1,9 @@
+*.log
+.DS_Store
+
+# LLM
+.opencode/
+AGENTS.md
+
+# Example results
+*.json
