@@ -74,26 +74,41 @@ local function is_workflow_file(filepath)
 	return filepath:match("%.github/workflows/.*%.ya?ml$") ~= nil
 end
 
--- Check if we've already seen this diagnostic to avoid duplicates
--- Zizmor can output the same finding multiple times with different locations
-local function create_diagnostic_key(result)
-	-- Use ident + primary location to deduplicate
-	-- This follows the clippy pattern where the same error can appear in multiple locations
+-- Helper to find the best location to highlight based on feature_kind
+-- KeyOnly = highlight just the key word (precise)
+-- Normal = highlight the full feature (broader context)
+local function get_best_location_for_diagnostic(result, current_filename)
+	-- First, find the Primary location for this file
 	local primary_loc = nil
 	for _, loc in ipairs(result.locations or {}) do
 		if loc.symbolic and loc.symbolic.kind == "Primary" then
-			primary_loc = loc
-			break
+			local workflow_file = loc.symbolic.key and loc.symbolic.key.Local and loc.symbolic.key.Local.given_path
+			local diagnostic_file = workflow_file and vim.fn.fnamemodify(workflow_file, ":t") or ""
+			if current_filename == diagnostic_file then
+				primary_loc = loc
+				break
+			end
 		end
 	end
 
-	if primary_loc and primary_loc.concrete and primary_loc.concrete.location then
-		local loc = primary_loc.concrete.location.start_point
-		return string.format("%s:%d:%d", result.ident, loc.row, loc.column)
+	if not primary_loc or not primary_loc.concrete or not primary_loc.concrete.location then
+		return nil
 	end
 
-	-- Fallback: just use the ident
-	return result.ident
+	-- Use feature_kind to determine highlight precision
+	-- KeyOnly = small, precise highlight (just the problematic word)
+	-- Normal = broader highlight (the whole problematic section)
+	local concrete = primary_loc.concrete.location
+	local annotation = primary_loc.symbolic.annotation or ""
+
+	return {
+		lnum = concrete.start_point.row,
+		col = concrete.start_point.column,
+		end_lnum = concrete.end_point.row,
+		end_col = concrete.end_point.column,
+		annotation = annotation,
+		feature_kind = primary_loc.symbolic.feature_kind,
+	}
 end
 
 -- Run zizmor and populate diagnostics with the results.
@@ -203,68 +218,53 @@ function M.zizmor()
 							return
 						end
 
+						-- Get current filename for filtering
+						local current_file = vim.fn.fnamemodify(filepath, ":t")
+
 						-- Zizmor outputs an array of findings
+						-- Group by ident to avoid showing the same rule multiple times
 						for _, result in ipairs(parsed) do
-							-- Create a unique key for this diagnostic
-							local diag_key = create_diagnostic_key(result)
+							-- Get the best location for this diagnostic
+							local loc = get_best_location_for_diagnostic(result, current_file)
 
-							-- Only process if we haven't seen this exact diagnostic
-							if not seen[diag_key] and result.locations and #result.locations > 0 then
-								seen[diag_key] = true
+							if loc then
+								-- Create unique key: ident + line + column
+								local diag_key = string.format("%s:%d:%d", result.ident, loc.lnum, loc.col)
 
-								-- Find the primary location
-								for _, location in ipairs(result.locations) do
-									if location.symbolic and location.symbolic.kind == "Primary"
-									   and location.concrete and location.concrete.location then
+								-- Only add if we haven't seen this exact diagnostic
+								if not seen[diag_key] then
+									seen[diag_key] = true
 
-										local concrete_loc = location.concrete.location.start_point
-										local end_point = location.concrete.location.end_point
+									local severity = result.determinations and result.determinations.severity
+									local mapped_severity = severity and M.config.severity_map[severity] or M.config.default_severity
 
-										-- Get the workflow file path
-										local workflow_file = nil
-										if location.symbolic.key and location.symbolic.key.Local then
-											workflow_file = location.symbolic.key.Local.given_path
-										end
-
-										-- Only add diagnostic if it's for the current file
-										local current_file = vim.fn.fnamemodify(filepath, ":t")
-										local diagnostic_file = workflow_file and vim.fn.fnamemodify(workflow_file, ":t") or ""
-
-										if current_file == diagnostic_file then
-											local severity = result.determinations and result.determinations.severity
-											local mapped_severity = severity and M.config.severity_map[severity] or M.config.default_severity
-
-											-- Build the diagnostic message
-											local message = string.format("[%s] %s", result.ident, result.desc)
-											if location.symbolic.annotation then
-												message = message .. ": " .. location.symbolic.annotation
-											end
-											if result.url then
-												message = message .. " (" .. result.url .. ")"
-											end
-
-											local diag = {
-												-- Zizmor uses 0-based indexing already
-												lnum = concrete_loc.row,
-												col = concrete_loc.column,
-												end_lnum = end_point.row,
-												end_col = end_point.column,
-												message = message,
-												severity = mapped_severity,
-												source = "zizmor",
-												user_data = {
-													rule_id = result.ident,
-													url = result.url,
-													confidence = result.determinations and result.determinations.confidence,
-												}
-											}
-
-											table.insert(diags, diag)
-										end
-
-										-- Only process the first Primary location
-										break
+									-- Build the diagnostic message
+									local message = string.format("[%s] %s", result.ident, result.desc)
+									if loc.annotation and loc.annotation ~= "" then
+										message = message .. ": " .. loc.annotation
 									end
+									if result.url then
+										message = message .. " (" .. result.url .. ")"
+									end
+
+									local diag = {
+										-- Zizmor uses 0-based indexing already
+										lnum = loc.lnum,
+										col = loc.col,
+										end_lnum = loc.end_lnum,
+										end_col = loc.end_col,
+										message = message,
+										severity = mapped_severity,
+										source = "zizmor",
+										user_data = {
+											rule_id = result.ident,
+											url = result.url,
+											confidence = result.determinations and result.determinations.confidence,
+											feature_kind = loc.feature_kind,
+										}
+									}
+
+									table.insert(diags, diag)
 								end
 							end
 						end

@@ -105,19 +105,28 @@ end, { desc = "Show zizmor config" })
 
 1. When you open a workflow file, the plugin runs `zizmor --format=json --persona auditor -qq <workflow-dir>`
 2. The `-qq` flag suppresses the banner and logging output (quiet mode)
-3. It parses the JSON output and filters diagnostics for the current file
-4. Duplicates are removed using a combination of rule ID and primary location
-5. Only "Primary" locations are shown (not "Related" or "Hidden" locations)
-6. Diagnostics are displayed using Neovim's native diagnostic system
+3. Parses the JSON output and extracts findings for the current file
+4. For each finding, identifies the "Primary" location (the main issue)
+5. Uses `feature_kind` to determine highlight precision:
+   - `KeyOnly` → Just highlight the problematic word
+   - `Normal` → Highlight the relevant section
+6. Deduplicates by rule ID + location to show each issue once
+7. Displays diagnostics using Neovim's native diagnostic system
 
-## Deduplication Logic
+## Smart Highlighting & Deduplication
 
-Zizmor follows clippy's structure and can report the same finding multiple times with different locations (Primary, Related, Hidden). This plugin:
+Zizmor can report the same finding multiple times with different location kinds (Primary, Related, Hidden). This plugin uses smart logic to avoid excessive highlighting:
 
-- Only processes "Primary" locations
-- Creates a unique key based on rule ID (`ident`) and location
-- Filters diagnostics to only show those matching the current file
-- Prevents duplicate entries in the diagnostic list
+**Deduplication:**
+- Groups findings by rule ID + location to show each issue once
+- Only uses "Primary" locations (ignores "Related" and "Hidden")
+- Filters to only show diagnostics for the current file
+
+**Precise Highlighting:**
+- Uses zizmor's `feature_kind` field to determine highlight precision
+- `KeyOnly` findings → Highlights just the problematic word (e.g., "lint")
+- `Normal` findings → Highlights the relevant code section
+- Avoids highlighting entire file by being selective about what to show
 
 ## Example Output
 

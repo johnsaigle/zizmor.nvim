@@ -103,10 +103,16 @@ When you open a GitHub Actions workflow file:
 6. Only shows "Primary" locations (not "Related" or "Hidden")
 7. Displays via Neovim's native diagnostic system
 
+Smart Highlighting:
+  Zizmor provides a feature_kind field that indicates how to highlight:
+  - KeyOnly: Highlights just the problematic word (precise)
+  - Normal: Highlights the relevant code section (contextual)
+  This prevents the entire file from being highlighted.
+
 Deduplication:
-  Zizmor can report the same finding multiple times. The plugin creates
-  a unique key using the rule identifier and primary location to prevent
-  duplicate diagnostics from appearing.
+  The plugin groups findings by rule ID + location to show each issue
+  once. It only uses "Primary" locations, ignoring "Related" and
+  "Hidden" to avoid redundant highlighting.
 
 ==============================================================================
 vim:tw=78:ts=8:ft=help:norl:
