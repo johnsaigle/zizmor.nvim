@@ -77,6 +77,7 @@ end
 -- Helper to find the best location to highlight based on feature_kind
 -- KeyOnly = highlight just the key word (precise)
 -- Normal = highlight the full feature (broader context)
+-- File-level = highlight only first line (avoid highlighting entire file)
 local function get_best_location_for_diagnostic(result, current_filename)
 	-- First, find the Primary location for this file
 	local primary_loc = nil
@@ -95,19 +96,39 @@ local function get_best_location_for_diagnostic(result, current_filename)
 		return nil
 	end
 
+	local concrete = primary_loc.concrete.location
+	local annotation = primary_loc.symbolic.annotation or ""
+	local feature_kind = primary_loc.symbolic.feature_kind
+
+	-- Check if this is a file-level warning (starts at row 0, spans many lines)
+	-- These are workflow-level issues like missing concurrency settings
+	local is_file_level = concrete.start_point.row == 0 and
+	                      concrete.start_point.column == 0 and
+	                      (concrete.end_point.row - concrete.start_point.row) > 10
+
+	if is_file_level then
+		-- For file-level warnings, only highlight the first line (e.g., "name: workflow")
+		-- This prevents highlighting the entire file
+		return {
+			lnum = 0,
+			col = 0,
+			end_lnum = 0,
+			end_col = 100, -- Highlight the whole first line
+			annotation = annotation,
+			feature_kind = "FileLeve", -- Custom kind for file-level
+		}
+	end
+
 	-- Use feature_kind to determine highlight precision
 	-- KeyOnly = small, precise highlight (just the problematic word)
 	-- Normal = broader highlight (the whole problematic section)
-	local concrete = primary_loc.concrete.location
-	local annotation = primary_loc.symbolic.annotation or ""
-
 	return {
 		lnum = concrete.start_point.row,
 		col = concrete.start_point.column,
 		end_lnum = concrete.end_point.row,
 		end_col = concrete.end_point.column,
 		annotation = annotation,
-		feature_kind = primary_loc.symbolic.feature_kind,
+		feature_kind = feature_kind,
 	}
 end
 

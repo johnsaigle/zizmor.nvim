@@ -126,7 +126,10 @@ Zizmor can report the same finding multiple times with different location kinds 
 - Uses zizmor's `feature_kind` field to determine highlight precision
 - `KeyOnly` findings → Highlights just the problematic word (e.g., "lint")
 - `Normal` findings → Highlights the relevant code section
-- Avoids highlighting entire file by being selective about what to show
+- **File-level warnings** → Only highlights the first line (not the entire file)
+  - Examples: `concurrency-limits`, `excessive-permissions` at workflow level
+  - These warnings apply to the whole workflow, not a specific line
+  - Highlighting just the first line makes them visible without obscuring code
 
 ## Example Output
 
